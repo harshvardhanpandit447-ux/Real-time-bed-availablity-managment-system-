@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Mediloc — Smart Hospital Finder & Two-Portal Multi-Hospital Security Architecture
 
 A full-stack, responsive healthcare navigation and bed-management web application built with Flask, SQLAlchemy, SQLite (PostgreSQL-compatible), Leaflet.js, and mobile QR code integration.
@@ -87,3 +88,7 @@ Execute the security and multi-hospital isolation test suite:
 12. `test_12_deactivated_staff_cannot_perform_operations`: Deactivated staff accounts denied access (`403 Forbidden`).
 13. `test_13_invalid_bed_state_transitions_rejected`: Enforces `Available → Occupied → Cleaning → Available` lifecycle (`409 Conflict`).
 14. `test_14_audit_records_generated`: State-changing operations generate immutable audit records.
+=======
+# Real-time-bed-availablity-managment-system-
+PBL project
+>>>>>>> b29858cd295827d522f14b8dcbe499bef246d7b0
