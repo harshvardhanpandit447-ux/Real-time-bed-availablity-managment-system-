@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2563eb">
+  <title>Mediloc — Smart Hospital Finder & Real-Time Bed Availability</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Bar with Two-Portal Login Options -->
+  <header class="topbar">
+    <a class="brand" href="#home">
+      <span class="brand-mark">✚</span>
+      <span><b>Mediloc</b><small>Smart Hospital Finder</small></span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button>
+    <nav id="mainNav">
+      <a href="#home">Home</a>
+      <a href="#hospitals">Find Hospitals</a>
+      <a href="#how">How It Works</a>
+      <a href="#staff">Staff Dashboard</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="nav-actions">
+      <!-- Notification Bell -->
+      <div class="notif-wrapper">
+        <button class="notif-btn" id="notifBtn" aria-label="Notifications" title="In-app notifications">
+          <span>🔔</span>
+          <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+        </button>
+        <div class="notif-dropdown" id="notifDropdown" style="display:none;">
+          <div class="notif-header">
+            <b>System Notifications</b>
+            <small id="notifCountLabel">0 updates</small>
+          </div>
+          <div class="notif-list" id="notifList">
+            <div class="notif-empty">No new notifications</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auth Controls: Two Distinct Portals (Option A: User Login | Option B: Hospital Login) -->
+      <div id="authGuestControls" class="auth-group">
+        <button class="btn btn-outline btn-small" id="openUserLoginBtn" title="Citizen Login">User Login</button>
+        <button class="btn btn-outline btn-small btn-hospital-nav" id="openHospitalLoginBtn" title="Hospital Personnel Login">🩺 Hospital Login</button>
+        <button class="btn btn-primary btn-small" id="openRegisterBtn" title="Register New Citizen Profile">Register</button>
+      </div>
+
+      <!-- Logged-in Controls (Role Aware) -->
+      <div id="authUserControls" class="auth-group" style="display:none;">
+        <button class="user-pill-btn" id="openProfileBtn" title="Account & Saved Location">
+          <span class="user-avatar" id="navUserAvatar">U</span>
+          <div class="user-pill-text">
+            <b id="navUserName">User</b>
+            <small id="navUserBadge">📍 Location</small>
+          </div>
+        </button>
+        <button class="btn btn-outline btn-small" id="logoutBtn" title="Sign out">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero section" id="home">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="pulse"></span> SMART HEALTHCARE ACCESS</span>
+        <h1>Find nearby hospitals.<br><span>Know bed availability.</span></h1>
+        <p class="lead">Explore verified hospitals on an interactive map and check real-time reported bed availability before you travel.</p>
+
+        <!-- Fixed Location Input & Search Bar -->
+        <div class="search-container">
+          <div class="searchbar" id="heroSearchBar">
+            <span class="search-icon">📍</span>
+            <input
+              type="text"
+              id="locationInput"
+              placeholder="Search by locality, area, or hospital name..."
+              value="Pune, Maharashtra"
+              autocomplete="off"
+            >
+            <button class="btn btn-primary" id="searchBtn">Find Hospitals <span>→</span></button>
+          </div>
+          <div class="search-hint-row">
+            <span class="quick-pill" onclick="quickSearch('Baner')">Baner</span>
+            <span class="quick-pill" onclick="quickSearch('Shivajinagar')">Shivajinagar</span>
+            <span class="quick-pill" onclick="quickSearch('Deccan')">Deccan</span>
+            <span class="quick-pill" onclick="quickSearch('Kothrud')">Kothrud</span>
+            <span class="quick-pill" onclick="quickSearch('Aundh')">Aundh</span>
+            <button class="text-button" id="gpsBtn">◎ Optional GPS lookup</button>
+          </div>
+        </div>
+
+        <!-- User Saved Location Banner (Shows dynamically when citizen is logged in) -->
+        <div id="userLocationBanner" class="user-location-banner" style="display:none;">
+          <div class="banner-icon">📍</div>
+          <div class="banner-text">
+            <strong id="bannerLocalityText">Showing hospitals near your saved location</strong>
+            <small id="bannerAddressText">Baner, Pune · Coordinates active</small>
+          </div>
+          <button class="btn btn-outline btn-tiny" id="bannerEditLocBtn">Edit Location</button>
+        </div>
+
+        <div class="trust-row">
+          <div><strong>Live Bed Status</strong><small>Calculated from database</small></div>
+          <div><strong>Map Synchronized</strong><small>Pins focus on selection</small></div>
+          <div><strong>Multi-Hospital Security</strong><small>Isolated staff permissions</small></div>
+        </div>
+      </div>
+
+      <div class="hero-map-wrap">
+        <div class="map-heading">
+          <div>
+            <b>Interactive Hospital Map</b>
+            <small id="mapSubheading">Pune Network · Click any marker for details</small>
+          </div>
+          <span class="map-live" id="mapStatusBadge"><i></i> Real-time sync</span>
+        </div>
+        <div id="heroMap" class="hero-map" aria-label="Interactive hospital map"></div>
+        <div class="map-legend">
+          <span><i class="dot green"></i> Available</span>
+          <span><i class="dot amber"></i> Limited / Cleaning</span>
+          <span><i class="dot red"></i> Full</span>
+          <span><i class="dot user-loc"></i> Saved Location</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Overview Stats Bar -->
+    <section class="stats section">
+      <div class="stat-card">
+        <span class="stat-icon blue">🏥</span>
+        <div><small>Hospitals listed</small><strong id="statHospitals">—</strong></div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon green">＋</span>
+        <div><small>Beds available</small><strong id="statAvailable">—</strong></div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon purple">▦</span>
+        <div><small>Beds occupied</small><strong id="statOccupied">—</strong></div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon amber">◷</span>
+        <div><small>Awaiting cleaning</small><strong id="statCleaning">—</strong></div>
+      </div>
+    </section>
+
+    <!-- Find Hospitals Section (Public Read-Only) -->
+    <section class="section content-section" id="hospitals">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">DISCOVER CARE</span>
+          <h2>Hospitals around you</h2>
+          <p>Click any hospital card or map marker to view detailed ward breakdown, ICU count, and direct contact.</p>
+        </div>
+        <div class="filter-controls">
+          <label class="filter-label">
+            Sort by:
+            <select id="sortFilter">
+              <option value="distance">Nearest Distance</option>
+              <option value="available">Most Available Beds</option>
+              <option value="icu">Most Available ICU</option>
+              <option value="name">Hospital Name</option>
+            </select>
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" id="filterAvailableOnly"> Available only
+          </label>
+          <label class="filter-checkbox">
+            <input type="checkbox" id="filterIcuOnly"> ICU available
+          </label>
+          <button class="btn btn-outline btn-small" id="refreshBtn">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="hospital-layout">
+        <div id="hospitalList" class="hospital-list">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+        <div class="list-map-wrap">
+          <div id="listMap" class="list-map"></div>
+          <div class="map-footnote">Map data © OpenStreetMap contributors · Mediloc Healthcare Navigation</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="section content-section alt-bg" id="how">
+      <div class="section-head centered">
+        <div>
+          <span class="eyebrow">SIMPLE BY DESIGN</span>
+          <h2>One connected workflow</h2>
+          <p>From locating the nearest hospital with bed availability to certified housekeeping sanitization.</p>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <span class="feature-icon">📍</span>
+          <h3>Saved User Locality</h3>
+          <p>Register once with your area or locality; hospitals are automatically sorted by proximity whenever you return.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon">📊</span>
+          <h3>Live Bed Status</h3>
+          <p>Transparent counts for General and ICU wards calculated directly from active database records.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon">🛡️</span>
+          <h3>Multi-Hospital Security</h3>
+          <p>Strict server-enforced isolation. Hospital staff can access and manage beds for their assigned hospital only.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon">✨</span>
+          <h3>Strict Cleaning Queue</h3>
+          <p>Discharged beds are moved to Cleaning and never made Available until sanitization is approved.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Hospital Staff Dashboard Section (Multi-Hospital Isolation Enforced) -->
+    <section class="section staff-section" id="staff">
+      <div class="staff-intro">
+        <span class="eyebrow">HOSPITAL STAFF PORTAL</span>
+        <h2>Hospital bed management</h2>
+        <p>Restricted operational access for duty officers, ward nurses, and housekeeping.</p>
+        
+        <!-- Prominent Hospital Assignment Badge (NO universal demo selector) -->
+        <div class="staff-hospital-locked-box" id="staffLockedHospBox">
+          <span class="badge blue" id="staffRoleBadge">HOSPITAL PERSONNEL</span>
+          <h3 id="staffLockedHospTitle">Sign in to Hospital Portal</h3>
+          <small id="staffLockedHospAddress">Operations strictly locked to assigned facility</small>
+        </div>
+
+        <div class="notice">
+          <strong>Lifecycle Rule:</strong> Available → Occupied → Cleaning → Available.<br>
+          Discharged beds must be sanitized and approved before returning to Available status.
+        </div>
+      </div>
+
+      <div class="dashboard">
+        <!-- Banner if not authenticated as staff -->
+        <div id="staffAuthRequiredBanner" class="staff-auth-required-banner" style="display:none;">
+          <span class="banner-lock-icon">🔒</span>
+          <div>
+            <b>Hospital Staff Authentication Required</b>
+            <p>You are currently browsing as a public citizen. Changing bed occupancy, sanitization confirmation, and QR generation are restricted to authorized hospital personnel.</p>
+          </div>
+          <button class="btn btn-primary btn-small" id="promptStaffLoginBtn">Sign In to Hospital Portal →</button>
+        </div>
+
+        <!-- Dashboard Content Container (Visible to authorized staff) -->
+        <div id="staffDashboardContainer">
+          <!-- Staff Dashboard Tabs -->
+          <div class="dash-tabs">
+            <button class="tab-btn active" data-tab="tabBeds">🛏️ Assigned Bed Inventory</button>
+            <button class="tab-btn" data-tab="tabCleaning">🧹 Sanitization Queue</button>
+            <button class="tab-btn" data-tab="tabQr">📷 QR Scanner</button>
+            <button class="tab-btn" data-tab="tabAudit">📋 Hospital Audit Trail</button>
+          </div>
+
+          <!-- Tab 1: Bed Inventory (Locked to Assigned Hospital) -->
+          <div class="tab-content active" id="tabBeds">
+            <div class="dash-head">
+              <div>
+                <b id="bedHospitalLabel">Assigned Hospital Bed Inventory</b>
+                <small id="bedHospitalSublabel">Server-enforced hospital isolation</small>
+              </div>
+              <button class="btn btn-outline btn-small" id="loadBedsBtn">↻ Refresh Beds</button>
+            </div>
+
+            <div class="dash-filter-row">
+              <label>
+                Ward / Category:
+                <select id="bedCategoryFilter">
+                  <option value="">All Categories</option>
+                  <option value="General">General</option>
+                  <option value="ICU">ICU</option>
+                  <option value="Emergency">Emergency</option>
+                  <option value="Pediatric">Pediatric</option>
+                </select>
+              </label>
+              <label>
+                Status:
+                <select id="bedStatusFilter">
+                  <option value="">All Statuses</option>
+                  <option value="Available">Available</option>
+                  <option value="Occupied">Occupied</option>
+                  <option value="Cleaning">Cleaning</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="bedGrid" class="bed-grid"></div>
+
+            <div class="manual-actions">
+              <h3>Perform Bed Action</h3>
+              <div class="form-grid">
+                <label>
+                  Selected Bed
+                  <select id="bedSelect"></select>
+                </label>
+                <label>
+                  Action
+                  <select id="actionSelect">
+                    <option value="admit">Admit Patient (Mark Occupied)</option>
+                    <option value="discharge">Discharge Patient (Move to Cleaning)</option>
+                    <option value="clean">Confirm Cleaning Complete (Mark Available)</option>
+                  </select>
+                </label>
+                <label id="patientCodeFieldWrap">
+                  Pseudonymous Patient Code
+                  <input id="patientCode" value="DEMO-P-001" maxlength="80">
+                </label>
+                <div class="btn-group-full">
+                  <button class="btn btn-primary" id="runActionBtn">Update Bed Status</button>
+                  <button class="btn btn-outline" id="generateQrBtn" type="button">Generate Bed QR Code</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Cleaning Queue -->
+          <div class="tab-content" id="tabCleaning" style="display:none;">
+            <div class="dash-head">
+              <div>
+                <b>Housekeeping Sanitization Queue</b>
+                <small id="cleaningQueueSublabel">Tasks for assigned facility only</small>
+              </div>
+              <button class="btn btn-outline btn-small" id="refreshCleaningBtn">↻ Refresh Queue</button>
+            </div>
+            <div class="cleaning-queue-list" id="cleaningQueueList">
+              <div class="notif-empty">Loading cleaning tasks...</div>
+            </div>
+          </div>
+
+          <!-- Tab 3: QR Scanner -->
+          <div class="tab-content" id="tabQr" style="display:none;">
+            <div class="scan-panel">
+              <div class="scan-title">
+                <div>
+                  <b>Bed QR Scanner</b>
+                  <small>Camera scanner validates against your assigned hospital</small>
+                </div>
+                <span class="badge">Hospital Verified</span>
+              </div>
+              <div class="scan-controls">
+                <button class="btn btn-primary" id="startScanBtn">Start Camera Scanner</button>
+                <button class="btn btn-outline" id="stopScanBtn" disabled>Stop Scanner</button>
+                <label class="btn btn-outline file-btn">
+                  Upload QR Image
+                  <input id="qrFile" type="file" accept="image/*" hidden>
+                </label>
+              </div>
+              <div id="qr-reader" class="qr-reader"></div>
+              <div id="scanMessage" class="message" role="status">Point camera at a bed QR code or pick a photo.</div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Audit History -->
+          <div class="tab-content" id="tabAudit" style="display:none;">
+            <div class="dash-head">
+              <div>
+                <b>Hospital Audit Trail</b>
+                <small id="auditTrailSublabel">Immutable activity log for your assigned facility</small>
+              </div>
+              <button class="btn btn-outline btn-small" id="refreshAuditBtn">↻ Refresh Logs</button>
+            </div>
+            <div class="audit-log-list" id="auditLogList">
+              <div class="notif-empty">Loading audit events...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clean Contact Section -->
+    <section class="section contact-section" id="contact">
+      <div class="contact-layout">
+        <div class="contact-info-card">
+          <span class="eyebrow">GET IN TOUCH</span>
+          <h2>Connect with the Mediloc team</h2>
+          <p>Have questions, feedback, or need assistance integrating hospital data?</p>
+          <div class="contact-details">
+            <div class="contact-item">
+              <span class="contact-icon">📍</span>
+              <div>
+                <strong>Central Coordination</strong>
+                <small>Pune Healthcare Information Network, Maharashtra</small>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">✉</span>
+              <div>
+                <strong>Support & Inquiries</strong>
+                <small>support@mediloc.demo</small>
+              </div>
+            </div>
+            <div class="contact-item">
+              <span class="contact-icon">📞</span>
+              <div>
+                <strong>Hospital Helpline (Demo)</strong>
+                <small>+91 (020) 2550-MEDILOC</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-form-card">
+          <h3>Send us a message</h3>
+          <p>Fill out the form below and we'll respond promptly.</p>
+          <form id="contactForm">
+            <label>
+              Your Name
+              <input required placeholder="Dr. / Mr. / Ms. Name" id="contactName">
+            </label>
+            <label>
+              Email Address
+              <input required type="email" placeholder="you@example.com" id="contactEmail">
+            </label>
+            <label>
+              Subject / Topic
+              <select id="contactSubject">
+                <option value="feedback">General Feedback</option>
+                <option value="hospital_add">Register a Hospital</option>
+                <option value="bed_sync">Bed Availability Sync</option>
+                <option value="technical">Technical Support</option>
+              </select>
+            </label>
+            <label>
+              Message
+              <textarea required rows="4" placeholder="How can we assist you?" id="contactMessage"></textarea>
+            </label>
+            <button class="btn btn-primary" type="submit">Submit Inquiry →</button>
+            <small id="contactMsg" class="form-footnote">Inquiry submitted through demonstration channel.</small>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Clean Footer -->
+  <footer class="footer">
+    <div class="footer-main">
+      <a class="brand brand-light" href="#home">
+        <span class="brand-mark">✚</span>
+        <span><b>Mediloc</b><small>Smart Hospital Finder</small></span>
+      </a>
+      <p>Empowering citizens and medical personnel with verified hospital location mapping and real-time bed inventory tracking.</p>
+      <div class="footer-links">
+        <a href="#hospitals">Find Hospitals</a>
+        <a href="#staff">Staff Dashboard</a>
+        <a href="#how">How It Works</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Mediloc · Smart Hospital Finder Prototype</span>
+      <span>Leaflet & OpenStreetMap contributors</span>
+    </div>
+  </footer>
+
+  <!-- Modal 1: Hospital Details Modal (Change One) -->
+  <div class="modal-overlay" id="hospitalDetailModal" style="display:none;">
+    <div class="modal-card modal-large">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow" id="detailDemoBadge">VERIFIED DEMO RECORD</span>
+          <h2 id="detailHospitalName">Hospital Name</h2>
+          <p id="detailHospitalAddress">Hospital Address</p>
+        </div>
+        <button class="modal-close-btn" id="closeDetailModalBtn" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-metrics-grid">
+          <div class="metric-box blue">
+            <small>Total Beds</small>
+            <b id="detailTotalBeds">—</b>
+          </div>
+          <div class="metric-box green">
+            <small>Available Now</small>
+            <b id="detailAvailableBeds">—</b>
+          </div>
+          <div class="metric-box red">
+            <small>Occupied</small>
+            <b id="detailOccupiedBeds">—</b>
+          </div>
+          <div class="metric-box amber">
+            <small>Cleaning</small>
+            <b id="detailCleaningBeds">—</b>
+          </div>
+          <div class="metric-box purple">
+            <small>ICU Available</small>
+            <b id="detailIcuBeds">—</b>
+          </div>
+          <div class="metric-box teal">
+            <small>General Available</small>
+            <b id="detailGeneralBeds">—</b>
+          </div>
+        </div>
+
+        <div class="detail-meta-row">
+          <div id="detailDistanceBadge" class="distance-chip">📍 Calculating distance...</div>
+          <div id="detailLastUpdated" class="time-chip">◷ Last updated just now</div>
+          <a class="btn btn-outline btn-small" id="detailCallBtn" href="tel:+919823011001">📞 Call Hospital</a>
+          <button class="btn btn-primary btn-small" id="detailCenterMapBtn">Focus On Map</button>
+        </div>
+
+        <div class="detail-section">
+          <h3>Ward Breakdown & Live Bed Availability</h3>
+          <div id="detailWardList" class="ward-list-container"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="closeDetailFooterBtn">← Return to Hospital List</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: User Registration (Public Citizen) -->
+  <div class="modal-overlay" id="registerModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">CITIZEN PORTAL</span>
+          <h2>Register with Saved Location</h2>
+          <p>Your saved locality automatically personalizes hospital discovery whenever you log in.</p>
+        </div>
+        <button class="modal-close-btn" id="closeRegisterModalBtn">✕</button>
+      </div>
+
+      <form id="registerForm" class="modal-form">
+        <div class="form-row">
+          <label>
+            Full Name *
+            <input type="text" id="regName" required placeholder="Full Name">
+          </label>
+          <label>
+            Email Address *
+            <input type="email" id="regEmail" required placeholder="you@example.com">
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Password (min 6 chars) *
+            <input type="password" id="regPassword" required minlength="6" placeholder="••••••••">
+          </label>
+          <label>
+            Confirm Password *
+            <input type="password" id="regConfirmPassword" required minlength="6" placeholder="••••••••">
+          </label>
+        </div>
+
+        <div class="form-fieldset">
+          <legend>📍 Location Details (Saved to Profile)</legend>
+          <div class="form-row">
+            <label>
+              City *
+              <input type="text" id="regCity" required value="Pune">
+            </label>
+            <label>
+              Area / Locality *
+              <input type="text" id="regLocality" required placeholder="e.g. Baner, Kothrud, Deccan">
+            </label>
+            <label>
+              PIN Code
+              <input type="text" id="regPincode" placeholder="e.g. 411045">
+            </label>
+          </div>
+          <label>
+            Street Address (Optional)
+            <input type="text" id="regAddress" placeholder="Apartment, Street name">
+          </label>
+          <div class="quick-loc-row">
+            <small>Quick select Pune locality:</small>
+            <button type="button" class="btn-tiny btn-outline" onclick="fillRegLoc('Baner', '411045')">Baner</button>
+            <button type="button" class="btn-tiny btn-outline" onclick="fillRegLoc('Kothrud', '411038')">Kothrud</button>
+            <button type="button" class="btn-tiny btn-outline" onclick="fillRegLoc('Deccan Gymkhana', '411004')">Deccan</button>
+            <button type="button" class="btn-tiny btn-outline" onclick="fillRegLoc('Shivajinagar', '411005')">Shivajinagar</button>
+            <button type="button" class="btn-tiny btn-outline" onclick="fillRegLoc('Aundh', '411007')">Aundh</button>
+          </div>
+        </div>
+
+        <div id="regError" class="message error" style="display:none;"></div>
+
+        <div class="modal-footer-form">
+          <button type="submit" class="btn btn-primary" id="regSubmitBtn">Create Citizen Profile →</button>
+          <small>Already registered? <a href="#" id="switchToUserLoginLink">Sign In to Citizen Portal</a></small>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3A: Option A — Citizen Login Modal -->
+  <div class="modal-overlay" id="userLoginModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow blue">PORTAL OPTION A</span>
+          <h2>Citizen / Patient Login</h2>
+          <p>Retrieve your saved location and view nearby hospital bed availability.</p>
+        </div>
+        <button class="modal-close-btn" id="closeUserLoginModalBtn">✕</button>
+      </div>
+
+      <form id="userLoginForm" class="modal-form">
+        <label>
+          Citizen Email Address
+          <input type="email" id="userLoginEmail" required placeholder="user@example.com">
+        </label>
+        <label>
+          Password
+          <input type="password" id="userLoginPassword" required placeholder="••••••••">
+        </label>
+
+        <div id="userLoginError" class="message error" style="display:none;"></div>
+
+        <div class="modal-footer-form">
+          <button type="submit" class="btn btn-primary" id="userLoginSubmitBtn">Sign In to Citizen Portal</button>
+          <small>Need an account? <a href="#" id="switchToRegisterFromUserLink">Register with location</a></small>
+        </div>
+
+        <div class="demo-login-box">
+          <small><b>Demo Citizen Account:</b></small>
+          <div class="demo-btn-row">
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillUserLogin('user@mediloc.demo', 'DemoUser123!')">
+              👤 Citizen (Baner Locality)
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3B: Option B — Hospital Staff Login Modal (Multi-Hospital Isolation) -->
+  <div class="modal-overlay" id="hospitalLoginModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow green">PORTAL OPTION B</span>
+          <h2>Hospital Staff Login</h2>
+          <p>Restricted to authorized healthcare personnel. Hospital access is strictly isolated.</p>
+        </div>
+        <button class="modal-close-btn" id="closeHospitalLoginModalBtn">✕</button>
+      </div>
+
+      <form id="hospitalLoginForm" class="modal-form">
+        <label>
+          Hospital Staff Email
+          <input type="email" id="hospitalLoginEmail" required placeholder="staff@hospital.demo">
+        </label>
+        <label>
+          Staff Password
+          <input type="password" id="hospitalLoginPassword" required placeholder="••••••••">
+        </label>
+
+        <div id="hospitalLoginError" class="message error" style="display:none;"></div>
+
+        <div class="modal-footer-form">
+          <button type="submit" class="btn btn-primary" id="hospitalLoginSubmitBtn">Access Hospital Portal →</button>
+        </div>
+
+        <!-- Distinct Demo Staff Accounts per Hospital -->
+        <div class="demo-login-box">
+          <small><b>Demonstration Staff Accounts (Isolated per facility):</b></small>
+          <div class="demo-btn-row">
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillHospitalLogin('staff.deccan@mediloc.demo', 'DeccanStaff123!')">
+              🩺 Deccan Hospital Staff
+            </button>
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillHospitalLogin('staff.shivaji@mediloc.demo', 'ShivajiStaff123!')">
+              🩺 Shivajinagar Staff
+            </button>
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillHospitalLogin('staff.kothrud@mediloc.demo', 'KothrudStaff123!')">
+              🩺 Kothrud Staff
+            </button>
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillHospitalLogin('staff.pending@mediloc.demo', 'PendingStaff123!')">
+              ⚠️ Unapproved Staff (403 Test)
+            </button>
+            <button type="button" class="btn btn-outline btn-small" onclick="quickFillHospitalLogin('admin@mediloc.demo', 'DemoAdmin123!')">
+              🛡️ System Administrator
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Profile & Saved Location Settings -->
+  <div class="modal-overlay" id="profileModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">ACCOUNT SETTINGS</span>
+          <h2>Your Saved Profile & Location</h2>
+          <p>Update your city, locality, or address to automatically recalculate distances.</p>
+        </div>
+        <button class="modal-close-btn" id="closeProfileModalBtn">✕</button>
+      </div>
+
+      <form id="profileForm" class="modal-form">
+        <label>
+          Full Name
+          <input type="text" id="profName" required>
+        </label>
+        <label>
+          Email Address
+          <input type="email" id="profEmail" disabled title="Email cannot be changed">
+        </label>
+
+        <div class="form-fieldset">
+          <legend>📍 Primary Saved Location</legend>
+          <div class="form-row">
+            <label>
+              City
+              <input type="text" id="profCity" required>
+            </label>
+            <label>
+              Area / Locality
+              <input type="text" id="profLocality" required>
+            </label>
+            <label>
+              PIN Code
+              <input type="text" id="profPincode">
+            </label>
+          </div>
+          <label>
+            Street Address
+            <input type="text" id="profAddress">
+          </label>
+          <div class="coords-display">
+            <small id="profCoordsLabel">Coordinates: Active</small>
+          </div>
+        </div>
+
+        <div id="profError" class="message error" style="display:none;"></div>
+        <div id="profSuccess" class="message success" style="display:none;"></div>
+
+        <div class="modal-footer-form">
+          <button type="submit" class="btn btn-primary">Save Changes & Refresh Discovery →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="status"></div>
+
+</body>
+</html>
