@@ -13,20 +13,30 @@
 </head>
 <body>
 
-  <!-- Top Navigation Bar with Two-Portal Login Options -->
+  <!-- Top Navigation Bar with Role-Aware Experiences -->
   <header class="topbar">
-    <a class="brand" href="#home">
+    <a class="brand" id="brandLink" href="#home">
       <span class="brand-mark">✚</span>
-      <span><b>Mediloc</b><small>Smart Hospital Finder</small></span>
+      <span><b id="brandTitle">Mediloc</b><small id="brandSubtitle">Smart Hospital Finder</small></span>
     </a>
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">☰</button>
-    <nav id="mainNav">
+
+    <!-- Public / Citizen Navigation Links -->
+    <nav id="publicNav">
       <a href="#home">Home</a>
       <a href="#hospitals">Find Hospitals</a>
       <a href="#how">How It Works</a>
-      <a href="#staff">Staff Dashboard</a>
       <a href="#contact">Contact</a>
     </nav>
+
+    <!-- Hospital Staff Scoped Navigation Links -->
+    <nav id="staffNav" style="display:none;">
+      <a href="#" class="staff-nav-link active" data-tab="tabBeds">🛏️ Bed Inventory</a>
+      <a href="#" class="staff-nav-link" data-tab="tabCleaning">🧹 Cleaning Queue</a>
+      <a href="#" class="staff-nav-link" data-tab="tabQr">📷 QR Scanner</a>
+      <a href="#" class="staff-nav-link" data-tab="tabAudit">📋 Audit History</a>
+    </nav>
+
     <div class="nav-actions">
       <!-- Notification Bell -->
       <div class="notif-wrapper">
@@ -45,14 +55,14 @@
         </div>
       </div>
 
-      <!-- Auth Controls: Two Distinct Portals (Option A: User Login | Option B: Hospital Login) -->
+      <!-- Auth Controls: Guest Visitor -->
       <div id="authGuestControls" class="auth-group">
         <button class="btn btn-outline btn-small" id="openUserLoginBtn" title="Citizen Login">User Login</button>
         <button class="btn btn-outline btn-small btn-hospital-nav" id="openHospitalLoginBtn" title="Hospital Personnel Login">🩺 Hospital Login</button>
         <button class="btn btn-primary btn-small" id="openRegisterBtn" title="Register New Citizen Profile">Register</button>
       </div>
 
-      <!-- Logged-in Controls (Role Aware) -->
+      <!-- Logged-in Controls (Citizen User) -->
       <div id="authUserControls" class="auth-group" style="display:none;">
         <button class="user-pill-btn" id="openProfileBtn" title="Account & Saved Location">
           <span class="user-avatar" id="navUserAvatar">U</span>
@@ -63,12 +73,26 @@
         </button>
         <button class="btn btn-outline btn-small" id="logoutBtn" title="Sign out">Logout</button>
       </div>
+
+      <!-- Logged-in Controls (Hospital Staff) -->
+      <div id="authStaffControls" class="auth-group" style="display:none;">
+        <div class="user-pill-btn" id="staffProfileBadge" style="cursor:default;">
+          <span class="user-avatar" style="background:#0d2850;">🩺</span>
+          <div class="user-pill-text">
+            <b id="navStaffName">Staff Member</b>
+            <small id="navStaffHospitalBadge">Assigned Hospital</small>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-small" id="staffLogoutBtn" title="Sign out of Hospital Portal">Logout</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <!-- Hero Section -->
-    <section class="hero section" id="home">
+    <!-- Public Citizen & Visitor Experience -->
+    <div id="publicPortalView">
+      <!-- Hero Section -->
+      <section class="hero section" id="home">
       <div class="hero-copy">
         <span class="eyebrow"><span class="pulse"></span> SMART HEALTHCARE ACCESS</span>
         <h1>Find nearby hospitals.<br><span>Know bed availability.</span></h1>
@@ -225,163 +249,7 @@
       </div>
     </section>
 
-    <!-- Hospital Staff Dashboard Section (Multi-Hospital Isolation Enforced) -->
-    <section class="section staff-section" id="staff">
-      <div class="staff-intro">
-        <span class="eyebrow">HOSPITAL STAFF PORTAL</span>
-        <h2>Hospital bed management</h2>
-        <p>Restricted operational access for duty officers, ward nurses, and housekeeping.</p>
-        
-        <!-- Prominent Hospital Assignment Badge (NO universal demo selector) -->
-        <div class="staff-hospital-locked-box" id="staffLockedHospBox">
-          <span class="badge blue" id="staffRoleBadge">HOSPITAL PERSONNEL</span>
-          <h3 id="staffLockedHospTitle">Sign in to Hospital Portal</h3>
-          <small id="staffLockedHospAddress">Operations strictly locked to assigned facility</small>
-        </div>
-
-        <div class="notice">
-          <strong>Lifecycle Rule:</strong> Available → Occupied → Cleaning → Available.<br>
-          Discharged beds must be sanitized and approved before returning to Available status.
-        </div>
-      </div>
-
-      <div class="dashboard">
-        <!-- Banner if not authenticated as staff -->
-        <div id="staffAuthRequiredBanner" class="staff-auth-required-banner" style="display:none;">
-          <span class="banner-lock-icon">🔒</span>
-          <div>
-            <b>Hospital Staff Authentication Required</b>
-            <p>You are currently browsing as a public citizen. Changing bed occupancy, sanitization confirmation, and QR generation are restricted to authorized hospital personnel.</p>
-          </div>
-          <button class="btn btn-primary btn-small" id="promptStaffLoginBtn">Sign In to Hospital Portal →</button>
-        </div>
-
-        <!-- Dashboard Content Container (Visible to authorized staff) -->
-        <div id="staffDashboardContainer">
-          <!-- Staff Dashboard Tabs -->
-          <div class="dash-tabs">
-            <button class="tab-btn active" data-tab="tabBeds">🛏️ Assigned Bed Inventory</button>
-            <button class="tab-btn" data-tab="tabCleaning">🧹 Sanitization Queue</button>
-            <button class="tab-btn" data-tab="tabQr">📷 QR Scanner</button>
-            <button class="tab-btn" data-tab="tabAudit">📋 Hospital Audit Trail</button>
-          </div>
-
-          <!-- Tab 1: Bed Inventory (Locked to Assigned Hospital) -->
-          <div class="tab-content active" id="tabBeds">
-            <div class="dash-head">
-              <div>
-                <b id="bedHospitalLabel">Assigned Hospital Bed Inventory</b>
-                <small id="bedHospitalSublabel">Server-enforced hospital isolation</small>
-              </div>
-              <button class="btn btn-outline btn-small" id="loadBedsBtn">↻ Refresh Beds</button>
-            </div>
-
-            <div class="dash-filter-row">
-              <label>
-                Ward / Category:
-                <select id="bedCategoryFilter">
-                  <option value="">All Categories</option>
-                  <option value="General">General</option>
-                  <option value="ICU">ICU</option>
-                  <option value="Emergency">Emergency</option>
-                  <option value="Pediatric">Pediatric</option>
-                </select>
-              </label>
-              <label>
-                Status:
-                <select id="bedStatusFilter">
-                  <option value="">All Statuses</option>
-                  <option value="Available">Available</option>
-                  <option value="Occupied">Occupied</option>
-                  <option value="Cleaning">Cleaning</option>
-                </select>
-              </label>
-            </div>
-
-            <div id="bedGrid" class="bed-grid"></div>
-
-            <div class="manual-actions">
-              <h3>Perform Bed Action</h3>
-              <div class="form-grid">
-                <label>
-                  Selected Bed
-                  <select id="bedSelect"></select>
-                </label>
-                <label>
-                  Action
-                  <select id="actionSelect">
-                    <option value="admit">Admit Patient (Mark Occupied)</option>
-                    <option value="discharge">Discharge Patient (Move to Cleaning)</option>
-                    <option value="clean">Confirm Cleaning Complete (Mark Available)</option>
-                  </select>
-                </label>
-                <label id="patientCodeFieldWrap">
-                  Pseudonymous Patient Code
-                  <input id="patientCode" value="DEMO-P-001" maxlength="80">
-                </label>
-                <div class="btn-group-full">
-                  <button class="btn btn-primary" id="runActionBtn">Update Bed Status</button>
-                  <button class="btn btn-outline" id="generateQrBtn" type="button">Generate Bed QR Code</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab 2: Cleaning Queue -->
-          <div class="tab-content" id="tabCleaning" style="display:none;">
-            <div class="dash-head">
-              <div>
-                <b>Housekeeping Sanitization Queue</b>
-                <small id="cleaningQueueSublabel">Tasks for assigned facility only</small>
-              </div>
-              <button class="btn btn-outline btn-small" id="refreshCleaningBtn">↻ Refresh Queue</button>
-            </div>
-            <div class="cleaning-queue-list" id="cleaningQueueList">
-              <div class="notif-empty">Loading cleaning tasks...</div>
-            </div>
-          </div>
-
-          <!-- Tab 3: QR Scanner -->
-          <div class="tab-content" id="tabQr" style="display:none;">
-            <div class="scan-panel">
-              <div class="scan-title">
-                <div>
-                  <b>Bed QR Scanner</b>
-                  <small>Camera scanner validates against your assigned hospital</small>
-                </div>
-                <span class="badge">Hospital Verified</span>
-              </div>
-              <div class="scan-controls">
-                <button class="btn btn-primary" id="startScanBtn">Start Camera Scanner</button>
-                <button class="btn btn-outline" id="stopScanBtn" disabled>Stop Scanner</button>
-                <label class="btn btn-outline file-btn">
-                  Upload QR Image
-                  <input id="qrFile" type="file" accept="image/*" hidden>
-                </label>
-              </div>
-              <div id="qr-reader" class="qr-reader"></div>
-              <div id="scanMessage" class="message" role="status">Point camera at a bed QR code or pick a photo.</div>
-            </div>
-          </div>
-
-          <!-- Tab 4: Audit History -->
-          <div class="tab-content" id="tabAudit" style="display:none;">
-            <div class="dash-head">
-              <div>
-                <b>Hospital Audit Trail</b>
-                <small id="auditTrailSublabel">Immutable activity log for your assigned facility</small>
-              </div>
-              <button class="btn btn-outline btn-small" id="refreshAuditBtn">↻ Refresh Logs</button>
-            </div>
-            <div class="audit-log-list" id="auditLogList">
-              <div class="notif-empty">Loading audit events...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Clean Contact Section -->
+    <!-- Clean Contact Section (Citizen / Public Portal) -->
     <section class="section contact-section" id="contact">
       <div class="contact-layout">
         <div class="contact-info-card">
@@ -444,28 +312,293 @@
         </div>
       </div>
     </section>
-  </main>
 
-  <!-- Clean Footer -->
-  <footer class="footer">
-    <div class="footer-main">
-      <a class="brand brand-light" href="#home">
-        <span class="brand-mark">✚</span>
-        <span><b>Mediloc</b><small>Smart Hospital Finder</small></span>
-      </a>
-      <p>Empowering citizens and medical personnel with verified hospital location mapping and real-time bed inventory tracking.</p>
-      <div class="footer-links">
-        <a href="#hospitals">Find Hospitals</a>
-        <a href="#staff">Staff Dashboard</a>
-        <a href="#how">How It Works</a>
-        <a href="#contact">Contact</a>
+    <!-- Public Portal Footer -->
+    <footer class="footer">
+      <div class="footer-main">
+        <a class="brand brand-light" href="#home">
+          <span class="brand-mark">✚</span>
+          <span><b>Mediloc</b><small>Smart Hospital Finder</small></span>
+        </a>
+        <p>Empowering citizens and medical personnel with verified hospital location mapping and real-time bed inventory tracking.</p>
+        <div class="footer-links">
+          <a href="#hospitals">Find Hospitals</a>
+          <a href="#how">How It Works</a>
+          <a href="#contact">Contact</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Mediloc · Smart Hospital Finder Prototype</span>
+        <span>Leaflet & OpenStreetMap contributors</span>
+      </div>
+    </footer>
+  </div>
+  <!-- END Public Citizen Experience (#publicPortalView) -->
+
+  <!-- ========================================================= -->
+  <!-- DEDICATED HOSPITAL STAFF DASHBOARD (#hospitalDashboardView) -->
+  <!-- Scoped strictly to the authenticated staff member's hospital -->
+  <!-- ========================================================= -->
+  <div id="hospitalDashboardView" class="hospital-dashboard-view" style="display:none;">
+
+    <!-- 1. Hospital Dashboard Header (Section 3) -->
+    <header class="hospital-dash-header">
+      <div class="hosp-header-main">
+        <div class="hosp-logo-badge">🏥</div>
+        <div class="hosp-details-box">
+          <h1 id="dashHospitalName">Hospital Bed Management Dashboard</h1>
+          <p id="dashHospitalAddress">📍 Assigned Healthcare Facility</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-outline btn-small" id="dashRefreshAllBtn">↻ Refresh Data</button>
+        </div>
+      </div>
+
+      <div class="hosp-meta-row">
+        <span class="badge blue" id="dashHospitalType">Authorized Facility</span>
+        <span class="badge gray" id="dashStaffIdentityChip">Staff Member</span>
+        <span class="badge green-live"><i></i> Real-time DB Sync</span>
+        <span class="badge gray" id="dashHospitalPhone">📞 Contact Desk</span>
+      </div>
+    </header>
+
+    <!-- 2. Access Error Alert (Shown if staff account has no valid hospital assignment or is unapproved) -->
+    <div id="staffNoHospitalBanner" class="staff-auth-required-banner" style="display:none;">
+      <span class="banner-lock-icon">⚠️</span>
+      <div>
+        <b style="color:#b91c1c;">Hospital Assignment Access Error</b>
+        <p id="staffNoHospitalMessage" style="color:#7f1d1d;">Your staff account does not have a valid hospital assignment or is pending administrator approval. Operational bed management is locked.</p>
       </div>
     </div>
-    <div class="footer-bottom">
-      <span>© 2026 Mediloc · Smart Hospital Finder Prototype</span>
-      <span>Leaflet & OpenStreetMap contributors</span>
+
+    <!-- 3. Operational Content Area (Visible to staff with valid assignment) -->
+    <div id="staffOperationalArea">
+
+      <!-- Summary Cards (Section 4: Total, Available, Occupied, Cleaning, ICU Available) -->
+      <div class="staff-metric-grid">
+        <div class="staff-metric-card">
+          <div class="metric-card-icon blue">▦</div>
+          <div class="metric-card-info">
+            <small>Total Beds</small>
+            <strong id="staffStatTotal">—</strong>
+          </div>
+        </div>
+        <div class="staff-metric-card">
+          <div class="metric-card-icon green">＋</div>
+          <div class="metric-card-info">
+            <small>Available Beds</small>
+            <strong id="staffStatAvailable" class="text-green">—</strong>
+          </div>
+        </div>
+        <div class="staff-metric-card">
+          <div class="metric-card-icon red">■</div>
+          <div class="metric-card-info">
+            <small>Occupied Beds</small>
+            <strong id="staffStatOccupied" class="text-red">—</strong>
+          </div>
+        </div>
+        <div class="staff-metric-card">
+          <div class="metric-card-icon amber">◷</div>
+          <div class="metric-card-info">
+            <small>Awaiting Cleaning</small>
+            <strong id="staffStatCleaning" class="text-amber">—</strong>
+          </div>
+        </div>
+        <div class="staff-metric-card">
+          <div class="metric-card-icon teal">⚡</div>
+          <div class="metric-card-info">
+            <small>Available ICU</small>
+            <strong id="staffStatIcu" class="text-teal">—</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Focused Staff Dashboard Container (4 Tabs) -->
+      <div class="dashboard" style="margin-top:20px;">
+        <div class="dash-tabs">
+          <button class="tab-btn active" data-tab="tabBeds">🛏️ Bed Inventory</button>
+          <button class="tab-btn" data-tab="tabCleaning">🧹 Cleaning Queue</button>
+          <button class="tab-btn" data-tab="tabQr">📷 QR Scanner</button>
+          <button class="tab-btn" data-tab="tabAudit">📋 Audit History</button>
+        </div>
+
+        <!-- TAB 1: BED INVENTORY -->
+        <div class="tab-content active" id="tabBeds">
+          <div class="dash-head">
+            <div>
+              <b id="bedHospitalLabel">Assigned Bed Inventory</b>
+              <small id="bedHospitalSublabel">Search, filter, or click any bed card to admit, discharge, or confirm sanitization</small>
+            </div>
+            <button class="btn btn-outline btn-small" id="loadBedsBtn">↻ Refresh Beds</button>
+          </div>
+
+          <!-- Quick Filters: Search, Ward, Category, Status -->
+          <div class="dash-filter-row" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+            <label>
+              Search Bed Number / Ward:
+              <input type="text" id="bedSearchInput" placeholder="e.g. BED-01, ICU..." autocomplete="off">
+            </label>
+            <label>
+              Ward / Department:
+              <select id="bedWardFilter">
+                <option value="">All Wards & Departments</option>
+              </select>
+            </label>
+            <label>
+              Bed Category:
+              <select id="bedCategoryFilter">
+                <option value="">All Categories</option>
+                <option value="General">General</option>
+                <option value="ICU">ICU</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Pediatric">Pediatric</option>
+              </select>
+            </label>
+            <label>
+              Current Status:
+              <select id="bedStatusFilter">
+                <option value="">All Statuses</option>
+                <option value="Available">Available (Green)</option>
+                <option value="Occupied">Occupied (Red)</option>
+                <option value="Cleaning">Cleaning (Amber)</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Modern Bed Cards Grid -->
+          <div id="bedGrid" class="staff-bed-grid">
+            <div class="notif-empty">Loading assigned hospital beds...</div>
+          </div>
+        </div>
+
+        <!-- TAB 2: CLEANING QUEUE -->
+        <div class="tab-content" id="tabCleaning" style="display:none;">
+          <div class="dash-head">
+            <div>
+              <b>Housekeeping Sanitization Queue</b>
+              <small id="cleaningQueueSublabel">Tasks strictly for your assigned facility · Certified sanitization required before release</small>
+            </div>
+            <button class="btn btn-outline btn-small" id="refreshCleaningBtn">↻ Refresh Queue</button>
+          </div>
+          <div class="cleaning-queue-list" id="cleaningQueueList">
+            <div class="notif-empty">Loading cleaning tasks...</div>
+          </div>
+        </div>
+
+        <!-- TAB 3: QR SCANNER -->
+        <div class="tab-content" id="tabQr" style="display:none;">
+          <div class="scan-panel">
+            <div class="scan-title">
+              <div>
+                <b>Bed QR Scanner & Operational Processor</b>
+                <small>Validates against your assigned facility. Scanning another hospital's bed is strictly blocked.</small>
+              </div>
+              <span class="badge blue">Facility Verified</span>
+            </div>
+            <div class="scan-controls">
+              <button class="btn btn-primary" id="startScanBtn">Start Camera Scanner</button>
+              <button class="btn btn-outline" id="stopScanBtn" disabled>Stop Scanner</button>
+              <label class="btn btn-outline file-btn">
+                Upload QR Image
+                <input id="qrFile" type="file" accept="image/*" hidden>
+              </label>
+            </div>
+            <div id="qr-reader" class="qr-reader"></div>
+            <div id="scanMessage" class="message" role="status">Point camera at a bed QR code or pick a photo.</div>
+          </div>
+        </div>
+
+        <!-- TAB 4: AUDIT HISTORY -->
+        <div class="tab-content" id="tabAudit" style="display:none;">
+          <div class="dash-head">
+            <div>
+              <b>Hospital Audit Trail & Activity Log</b>
+              <small id="auditTrailSublabel">Immutable record of admissions, discharges, and sanitization for this facility</small>
+            </div>
+            <button class="btn btn-outline btn-small" id="refreshAuditBtn">↻ Refresh Logs</button>
+          </div>
+          <div class="audit-log-list" id="auditLogList">
+            <div class="notif-empty">Loading audit events...</div>
+          </div>
+        </div>
+      </div>
     </div>
-  </footer>
+
+    <!-- Hospital Dashboard Minimal Footer -->
+    <footer class="footer" style="margin-top:20px;border-radius:18px;">
+      <div class="footer-bottom">
+        <span id="footerStaffHospTitle">Mediloc Hospital Bed Management System</span>
+        <span>Multi-Hospital Security &bull; Session Active</span>
+      </div>
+    </footer>
+  </div>
+  <!-- END Hospital Staff Dashboard (#hospitalDashboardView) -->
+</main>
+
+  <!-- Modal: Bed Action & Details Modal (Hospital Staff Only) -->
+  <div class="modal-overlay" id="bedActionModal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow" id="bedModalCategory">WARD BED</span>
+          <h2 id="bedModalTitle">Bed Details</h2>
+          <p id="bedModalWard">Ward Name · Assigned Facility</p>
+        </div>
+        <button class="modal-close-btn" id="closeBedActionModalBtn">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding:16px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;padding:12px 16px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:16px;">
+          <div>
+            <small style="color:#64748b;display:block;font-size:11px;">CURRENT STATUS</small>
+            <span id="bedModalStatusPill" class="bed-status-pill available">Available</span>
+          </div>
+          <div style="text-align:right;">
+            <small style="color:#64748b;display:block;font-size:11px;">LAST UPDATED</small>
+            <b id="bedModalUpdated" style="font-size:12px;color:#0f172a;">Just now</b>
+          </div>
+        </div>
+
+        <!-- Dynamic Lifecycle Form based on current status -->
+        <div id="bedActionFormContainer">
+          <!-- 1. Available -> Admit Patient -->
+          <div id="bedActionAdmitGroup" style="display:none;">
+            <h3 style="font-size:14px;color:#0d2850;margin:0 0 8px;">Admit Patient into Bed</h3>
+            <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Entering a patient code will mark this bed as Occupied in real time.</p>
+            <label style="font-size:11px;font-weight:700;color:#334155;display:block;margin-bottom:6px;">
+              Pseudonymous Patient Code *
+              <input type="text" id="modalPatientCode" class="form-input" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-top:4px;" placeholder="e.g. PATIENT-01">
+            </label>
+            <button class="btn btn-primary" id="modalConfirmAdmitBtn" style="width:100%;margin-top:12px;">Admit Patient (Mark Occupied) →</button>
+          </div>
+
+          <!-- 2. Occupied -> Discharge Patient -->
+          <div id="bedActionDischargeGroup" style="display:none;">
+            <h3 style="font-size:14px;color:#991b1b;margin:0 0 8px;">Discharge Patient</h3>
+            <div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px;border-radius:8px;font-size:12px;line-height:1.5;margin-bottom:12px;">
+              <strong>Lifecycle Rule:</strong> Discharging a patient automatically moves this bed into <b>Cleaning status</b>. It will never become Available until housekeeping sanitization is completed and confirmed.
+            </div>
+            <p style="font-size:12px;color:#334155;margin-bottom:12px;">Current Patient: <b id="modalCurrentPatientCode">●●●●</b></p>
+            <button class="btn btn-danger" id="modalConfirmDischargeBtn" style="width:100%;">Discharge Patient (Move to Cleaning) →</button>
+          </div>
+
+          <!-- 3. Cleaning -> Confirm Housekeeping Sanitized -->
+          <div id="bedActionCleanGroup" style="display:none;">
+            <h3 style="font-size:14px;color:#92400e;margin:0 0 8px;">Sanitization & Release</h3>
+            <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:12px;border-radius:8px;font-size:12px;line-height:1.5;margin-bottom:12px;">
+              Confirm that housekeeping has fully sanitized and prepared this bed according to medical hygiene standards. Confirming will return the bed to <b>Available</b>.
+            </div>
+            <button class="btn btn-warning" id="modalConfirmCleanBtn" style="width:100%;">Confirm Sanitization Complete (Mark Available) →</button>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+          <button class="btn btn-outline btn-small" id="modalGenerateQrBtn" type="button">📷 Generate Bed QR</button>
+          <button class="btn btn-outline btn-small" id="closeBedActionFooterBtn" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal 1: Hospital Details Modal (Change One) -->
   <div class="modal-overlay" id="hospitalDetailModal" style="display:none;">

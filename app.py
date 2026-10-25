@@ -194,6 +194,9 @@ class HospitalStaff(db.Model):
             "user_is_active": self.user.is_active if self.user else False,
             "hospital_id": self.hospital_id,
             "hospital_name": self.hospital.name if self.hospital else "",
+            "hospital_address": self.hospital.address if self.hospital else "",
+            "hospital_city": self.hospital.city if self.hospital else "",
+            "hospital_phone": self.hospital.phone if self.hospital else "",
             "role_title": self.role_title,
             "is_approved": self.is_approved,
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None
@@ -692,11 +695,18 @@ def seed_demo_data():
 # ---------------------------------------------------------
 
 @app.get("/")
+@app.get("/home")
+@app.get("/index.html")
 def home():
     return send_from_directory(app.static_folder, "index.html")
 
+@app.get("/register")
+@app.get("/login")
 @app.get("/login/user")
 @app.get("/login/hospital")
+@app.get("/dashboard")
+@app.get("/dashboard/hospital")
+@app.get("/staff")
 def login_portal_routes():
     return send_from_directory(app.static_folder, "index.html")
 
@@ -706,6 +716,54 @@ def health():
         "status": "ok",
         "service": "Mediloc Healthcare Multi-Tenant Security API",
         "timestamp": now_utc().isoformat()
+    })
+
+@app.get("/api/stats")
+def get_public_stats():
+    """
+    Public platform-wide bed availability statistics calculated live from DB records.
+    Eligible hospital records and beds with status Available, Occupied, Cleaning.
+    """
+    try:
+        total_hospitals = Hospital.query.count()
+        beds_list = Bed.query.all()
+        total_beds = len(beds_list)
+        available_beds = sum(1 for b in beds_list if b.status == "Available")
+        occupied_beds = sum(1 for b in beds_list if b.status == "Occupied")
+        cleaning_beds = sum(1 for b in beds_list if b.status == "Cleaning")
+        icu_available = sum(1 for b in beds_list if b.category == "ICU" and b.status == "Available")
+
+        return jsonify({
+            "total_hospitals": total_hospitals,
+            "available_beds": available_beds,
+            "occupied_beds": occupied_beds,
+            "cleaning_beds": cleaning_beds,
+            "total_beds": total_beds,
+            "icu_available": icu_available,
+            "timestamp": now_utc().isoformat() + "Z"
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to compute statistics: {str(e)}"}), 500
+
+@app.post("/api/contact")
+def submit_contact():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name", "")).strip()
+    email = str(data.get("email", "")).strip()
+    subject = str(data.get("subject", "General Feedback")).strip()
+    message_text = str(data.get("message", "")).strip()
+
+    if not name or not email or not message_text:
+        return jsonify({"error": "Full name, email address, and message are required."}), 400
+
+    return jsonify({
+        "status": "success",
+        "message": "Inquiry registered. Our coordination desk will follow up via email.",
+        "inquiry": {
+            "name": name,
+            "email": email,
+            "subject": subject
+        }
     })
 
 # ---------------------------------------------------------
@@ -1057,10 +1115,13 @@ def get_staff_beds():
     if h_id:
         query = query.filter_by(hospital_id=h_id)
 
+    ward = request.args.get("ward", "").strip()
     category = request.args.get("category", "").strip()
     status = request.args.get("status", "").strip()
     search = request.args.get("search", "").strip()
 
+    if ward:
+        query = query.filter_by(ward=ward)
     if category:
         query = query.filter_by(category=category)
     if status:
@@ -1068,9 +1129,40 @@ def get_staff_beds():
 
     beds_list = query.order_by(Bed.id).all()
     if search:
-        beds_list = [b for b in beds_list if search.lower() in b.label.lower()]
+        search_lower = search.lower()
+        beds_list = [b for b in beds_list if search_lower in b.label.lower() or search_lower in b.ward.lower()]
 
     return jsonify([b.to_dict(include_patient=True) for b in beds_list])
+
+@app.get("/api/beds/<int:bed_id>")
+@staff_required
+def get_single_bed(bed_id):
+    """Returns single bed details, authorized only for staff assigned to this bed's hospital."""
+    user, staff_profile = get_current_staff()
+    bed = db.get_or_404(Bed, bed_id)
+    auth_err = verify_bed_access(bed, user, staff_profile)
+    if auth_err:
+        return auth_err
+    return jsonify(bed.to_dict(include_patient=True))
+
+@app.get("/api/beds/<int:bed_id>/history")
+@staff_required
+def get_bed_history(bed_id):
+    """Returns audit log and cleaning history for a specific bed, strictly hospital-isolated."""
+    user, staff_profile = get_current_staff()
+    bed = db.get_or_404(Bed, bed_id)
+    auth_err = verify_bed_access(bed, user, staff_profile)
+    if auth_err:
+        return auth_err
+
+    audits = AuditLog.query.filter_by(bed_id=bed.id, hospital_id=bed.hospital_id).order_by(AuditLog.id.desc()).limit(20).all()
+    cleanings = CleaningRecord.query.filter_by(bed_id=bed.id, hospital_id=bed.hospital_id).order_by(CleaningRecord.id.desc()).limit(10).all()
+
+    return jsonify({
+        "bed": bed.to_dict(include_patient=True),
+        "audit_logs": [a.to_dict() for a in audits],
+        "cleaning_records": [c.to_dict() for c in cleanings]
+    })
 
 @app.post("/api/beds/<int:bed_id>/admit")
 @staff_required
@@ -1373,8 +1465,13 @@ def get_staff_stats():
     admissions_count = sum(1 for log in recent_logs if log.action == "admission")
     discharges_count = sum(1 for log in recent_logs if log.action == "discharge")
 
+    hosp = db.session.get(Hospital, h_id) if h_id else None
+
     return jsonify({
         "hospital_id": h_id,
+        "hospital_name": hosp.name if hosp else "Unknown Facility",
+        "hospital_address": hosp.address if hosp else "",
+        "hospital_phone": hosp.phone if hosp else "",
         "total_beds": total,
         "available_beds": available,
         "occupied_beds": occupied,
@@ -1464,6 +1561,29 @@ def admin_create_hospital():
     db.session.add(h)
     db.session.commit()
     return jsonify(h.to_dict()), 201
+
+@app.put("/api/hospitals/<int:hospital_id>")
+@app.patch("/api/hospitals/<int:hospital_id>")
+@admin_required
+def update_hospital_details(hospital_id):
+    """
+    Hospital identity & administrative settings are strictly admin-only.
+    Hospital staff and regular users are denied access.
+    """
+    hospital = db.get_or_404(Hospital, hospital_id)
+    data = request.get_json(silent=True) or {}
+    if "name" in data and str(data["name"]).strip():
+        hospital.name = str(data["name"]).strip()
+    if "address" in data and str(data["address"]).strip():
+        hospital.address = str(data["address"]).strip()
+    if "phone" in data:
+        hospital.phone = str(data["phone"]).strip()
+    if "city" in data and str(data["city"]).strip():
+        hospital.city = str(data["city"]).strip()
+    if "locality" in data:
+        hospital.locality = str(data["locality"]).strip()
+    db.session.commit()
+    return jsonify(hospital.to_dict())
 
 # ---------------------------------------------------------
 # Frontend Catch-All

@@ -1,3 +1,6 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
 import unittest
 from app import app, db, User, Hospital, Bed, CleaningRecord, AuditLog, HospitalStaff
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -274,6 +277,94 @@ class MedilocSecurityTestCase(unittest.TestCase):
             self.assertEqual(log.hospital_id, self.h_a_id)
             self.assertEqual(log.actor_name, "Staff Hospital A")
             self.assertIn("AUDIT-TEST-01", log.details)
+
+    # 15. Staff can access single bed detail for own hospital, but blocked from other hospital's bed
+    def test_15_single_bed_access_isolation(self):
+        self.client.post("/api/auth/login/hospital", json={"email": "staff_a@test.com", "password": "Password123!"})
+        # Access own hospital bed
+        res_own = self.client.get(f"/api/beds/{self.b_a1_id}")
+        self.assertEqual(res_own.status_code, 200)
+        self.assertEqual(res_own.get_json()["label"], "A-BED-01")
+
+        # Attempt to access Hospital B bed
+        res_other = self.client.get(f"/api/beds/{self.b_b1_id}")
+        self.assertEqual(res_other.status_code, 403)
+        self.assertIn("not authorized", res_other.get_json()["error"].lower())
+
+    # 16. Bed history access is isolated to assigned hospital staff
+    def test_16_bed_history_isolation(self):
+        self.client.post("/api/auth/login/hospital", json={"email": "staff_a@test.com", "password": "Password123!"})
+        res_own = self.client.get(f"/api/beds/{self.b_a1_id}/history")
+        self.assertEqual(res_own.status_code, 200)
+        self.assertIn("audit_logs", res_own.get_json())
+
+        # Attempt to inspect Hospital B bed history
+        res_other = self.client.get(f"/api/beds/{self.b_b1_id}/history")
+        self.assertEqual(res_other.status_code, 403)
+
+    # 17. Hospital staff cannot edit hospital identity or administrative settings (Admin only)
+    def test_17_staff_cannot_edit_hospital_identity(self):
+        self.client.post("/api/auth/login/hospital", json={"email": "staff_a@test.com", "password": "Password123!"})
+        res = self.client.put(f"/api/hospitals/{self.h_a_id}", json={
+            "name": "Maliciously Renamed Hospital",
+            "address": "Attacker Address"
+        })
+        self.assertEqual(res.status_code, 403)
+        self.assertIn("administrator", res.get_json()["error"].lower())
+
+    # 18. Administrator can update hospital identity
+    def test_18_admin_can_edit_hospital_identity(self):
+        # Admin login
+        self.client.post("/api/auth/login", json={"email": "admin@test.com", "password": "Admin123!"})
+        res = self.client.put(f"/api/hospitals/{self.h_a_id}", json={
+            "name": "Hospital A (Updated by Admin)"
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.get_json()["name"], "Hospital A (Updated by Admin)")
+
+    # 19. Staff stats return assigned hospital metadata and accurate bed figures
+    def test_19_staff_stats_scoped_to_assigned_hospital(self):
+        self.client.post("/api/auth/login/hospital", json={"email": "staff_a@test.com", "password": "Password123!"})
+        res = self.client.get("/api/staff/stats")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["hospital_id"], self.h_a_id)
+        self.assertEqual(data["hospital_name"], "Hospital A (Deccan)")
+        self.assertIn("Fergusson Road", data["hospital_address"])
+        self.assertEqual(data["total_beds"], 3)
+        self.assertEqual(data["available_beds"], 1)
+        self.assertEqual(data["occupied_beds"], 1)
+        self.assertEqual(data["cleaning_beds"], 1)
+        self.assertEqual(data["icu_available"], 0)
+
+    # 20. Public platform statistics endpoint calculates live database counts
+    def test_20_public_stats_endpoint(self):
+        res = self.client.get("/api/stats")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["total_hospitals"], 2)
+        self.assertEqual(data["total_beds"], 5)
+        self.assertEqual(data["available_beds"], 2)  # A-BED-01 and B-BED-01
+        self.assertEqual(data["occupied_beds"], 2)   # A-BED-02 and B-BED-02
+        self.assertEqual(data["cleaning_beds"], 1)   # A-BED-03
+        self.assertIn("timestamp", data)
+
+    # 21. Contact inquiry submission
+    def test_21_contact_inquiry(self):
+        res = self.client.post("/api/contact", json={
+            "name": "Dr. Anita Joshi",
+            "email": "anita@clinic.demo",
+            "subject": "hospital_add",
+            "message": "We would like to connect our hospital network to Mediloc."
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.get_json()["status"], "success")
+
+    # 22. Frontend page aliases (/home, /register, /login, /login/user, /dashboard)
+    def test_22_frontend_route_aliases(self):
+        for route in ["/", "/home", "/register", "/login", "/login/user", "/login/hospital", "/dashboard", "/staff"]:
+            res = self.client.get(route)
+            self.assertEqual(res.status_code, 200, f"Route {route} failed with {res.status_code}")
 
 if __name__ == "__main__":
     unittest.main()

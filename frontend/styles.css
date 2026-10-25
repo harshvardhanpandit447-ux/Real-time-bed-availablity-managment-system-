@@ -1338,4 +1338,301 @@ button { cursor: pointer; }
   .dash-filter-row { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
+  .staff-metric-grid { grid-template-columns: repeat(2, 1fr); }
+  .hosp-header-main { flex-direction: column; align-items: flex-start; gap: 14px; }
 }
+
+/* ---------------------------------------------------------
+   Dedicated Hospital Dashboard View
+--------------------------------------------------------- */
+.hospital-dashboard-view {
+  padding: 24px clamp(16px, 4vw, 48px) 60px;
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hospital-dash-header {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 24px 28px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hosp-header-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.hosp-logo-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
+  flex-shrink: 0;
+}
+
+.hosp-details-box {
+  flex: 1;
+}
+
+.hosp-details-box h1 {
+  margin: 0 0 4px;
+  font-size: clamp(20px, 2.5vw, 26px);
+  color: var(--navy);
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+
+.hosp-details-box p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hosp-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.badge.gray {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badge.green-live {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.badge.green-live i {
+  width: 7px;
+  height: 7px;
+  background: #16a34a;
+  border-radius: 50%;
+  animation: pulse-dot 1.8s infinite;
+}
+
+/* 5 Scoped Summary Cards */
+.staff-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.staff-metric-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.staff-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.metric-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.metric-card-icon.blue { background: #eff6ff; color: #2563eb; }
+.metric-card-icon.green { background: #dcfce7; color: #16a34a; }
+.metric-card-icon.red { background: #fee2e2; color: #dc2626; }
+.metric-card-icon.amber { background: #fef3c7; color: #d97706; }
+.metric-card-icon.teal { background: #e0f2fe; color: #0284c7; }
+
+.metric-card-info small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.metric-card-info strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--navy);
+  margin-top: 2px;
+}
+.metric-card-info strong.text-green { color: #16a34a; }
+.metric-card-info strong.text-red { color: #dc2626; }
+.metric-card-info strong.text-amber { color: #d97706; }
+.metric-card-info strong.text-teal { color: #0284c7; }
+
+/* Enhanced Bed Card Grid */
+.staff-bed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.bed-card-modern {
+  background: white;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  position: relative;
+}
+.bed-card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.bed-card-modern.status-available {
+  border-color: #86efac;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 40%);
+}
+.bed-card-modern.status-occupied {
+  border-color: #fca5a5;
+  background: linear-gradient(180deg, #fef2f2 0%, #ffffff 40%);
+}
+.bed-card-modern.status-cleaning {
+  border-color: #fde047;
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 40%);
+}
+
+.bed-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.bed-card-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--navy);
+  margin: 0;
+}
+.bed-card-ward {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.bed-status-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bed-status-pill.available {
+  background: #dcfce7;
+  color: #15803d;
+}
+.bed-status-pill.occupied {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.bed-status-pill.cleaning {
+  background: #fef3c7;
+  color: #b45309;
+}
+.bed-status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.bed-status-pill.available .dot { background: #16a34a; }
+.bed-status-pill.occupied .dot { background: #dc2626; }
+.bed-status-pill.cleaning .dot { background: #d97706; }
+
+.bed-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 8px;
+}
+
+.bed-action-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.bed-action-btn-row .btn {
+  flex: 1;
+  text-align: center;
+  font-size: 11.5px;
+  padding: 7px 10px;
+}
+
+/* Button variants */
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  border: 1px solid #dc2626;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
+.btn-warning {
+  background: #d97706;
+  color: white;
+  border: 1px solid #d97706;
+}
+.btn-warning:hover {
+  background: #b45309;
+}
+
+/* Staff Nav Links in Header */
+.staff-nav-link {
+  transition: all 0.15s;
+  padding: 6px 10px !important;
+  border-radius: 8px;
+}
+.staff-nav-link.active {
+  background: #eff6ff;
+  color: #2563eb !important;
+  font-weight: 700;
+}
+
